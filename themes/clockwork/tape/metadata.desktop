@@ -1,6 +1,6 @@
 [SddmGreeterTheme]
-Name=clockwork
-Description=Clockwork Qylock Theme
+Name=clockwork-tape
+Description=Tape - Clockwork
 Author=Darkkal44
 Type=sddm-theme
 MainScript=Main.qml

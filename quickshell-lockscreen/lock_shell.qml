@@ -29,24 +29,24 @@ ShellRoot {
         target: sddmShim.sddm
         function onLoginSucceeded() {
             shellRoot.authenticated = true
-            shellRoot.sessionLocked = false
-            
+
             // Hyprland session lock fix
             if (Quickshell.env("XDG_CURRENT_DESKTOP") === "Hyprland" || Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== "") {
                 Quickshell.execDetached(["hyprctl", "keyword", "misc:allow_session_lock_restore", "1"]);
             }
             Quickshell.execDetached(["loginctl", "unlock-session"]);
 
-            // Transition and quit
+            // Delay quit 
             quitTimer.start()
         }
     }
 
     Timer {
         id: quitTimer
-        interval: 1500
+        interval: 3000
         onTriggered: {
-            Qt.quit();
+            shellRoot.sessionLocked = false
+            Qt.quit()
         }
     }
 

@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 
-# This script installs Quickshell Lockscreen support for SDDM themes.
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="$HOME/.local/share/quickshell-lockscreen"
 
-# Reset terminal colors on exit or crash
+# Reset Colors
 trap 'echo -ne "\033[0m"' EXIT
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Theme Palette & UI Functions
-# ─────────────────────────────────────────────────────────────────────────────
-
+# UI Utility
 C_MAIN='\033[38;2;202;169;224m'
 C_ACCENT='\033[38;2;145;177;240m'
 C_DIM='\033[38;2;129;122;150m'
@@ -47,13 +43,10 @@ error() {
     echo -e "${C_MAIN}${C_BOLD} ╰─ ${C_RED}✘ ${C_RESET}$1\n"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Core Logic
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Core Logic
 header
 
-# Dependency check
+# Deps Check
 info "Checking dependencies..."
 
 if ! command -v quickshell &> /dev/null; then
@@ -75,7 +68,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 1
 fi
 
-info "Deploying Base Files..."
+# Deploy Base
 rm -rf "$TARGET_DIR"
 cp -r "$DIR/quickshell-lockscreen" "$TARGET_DIR"
 substep "Copied wrapper successfully"
@@ -86,6 +79,7 @@ substep "Created symbolic link to local themes"
 chmod +x "$TARGET_DIR/lock.sh"
 success "Permissions applied"
 
+# Theme Select
 info "Selecting Default Lockscreen Theme..."
 
 THEMES_DIR="$DIR/themes"
@@ -112,45 +106,7 @@ else
     fi
 fi
 
-# Sub-selection logic for variants (Ported from sddm.sh)
-if [ "$THEME_NAME" == "cozytile" ]; then
-    info "Selecting variant for Cozytile theme..."
-    COZYTILE_DIR="$THEMES_DIR/cozytile"
-    if ! command -v fzf &> /dev/null; then
-        VARIANTS=($(ls -1 "$COZYTILE_DIR"))
-        for i in "${!VARIANTS[@]}"; do
-            echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}$((i+1)) ${C_DIM}❯ ${C_RESET}${VARIANTS[$i]}"
-        done
-        echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
-        read -rp "" V_SELECTION
-        if [[ "$V_SELECTION" =~ ^[0-9]+$ ]] && [ "$V_SELECTION" -ge 1 ] && [ "$V_SELECTION" -le "${#VARIANTS[@]}" ]; then
-            THEME_NAME="cozytile/${VARIANTS[$((V_SELECTION-1))]}"
-        fi
-    else
-        SELECTED_VARIANT=$(ls -1 "$COZYTILE_DIR" | fzf --prompt="Select variant: " --height=10 --reverse --border --header="Choose a Cozytile variant")
-        [ -n "$SELECTED_VARIANT" ] && THEME_NAME="cozytile/$SELECTED_VARIANT"
-    fi
-fi
-
-if [ "$THEME_NAME" == "tui" ]; then
-    info "Selecting variant for TUI theme..."
-    TUI_VARIANTS_DIR="$THEMES_DIR/tui"
-    if ! command -v fzf &> /dev/null; then
-        VARIANTS=($(ls -1 "$TUI_VARIANTS_DIR"))
-        for i in "${!VARIANTS[@]}"; do
-            echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}$((i+1)) ${C_DIM}❯ ${C_RESET}${VARIANTS[$i]}"
-        done
-        echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
-        read -rp "" V_SELECTION
-        if [[ "$V_SELECTION" =~ ^[0-9]+$ ]] && [ "$V_SELECTION" -ge 1 ] && [ "$V_SELECTION" -le "${#VARIANTS[@]}" ]; then
-            THEME_NAME="tui/${VARIANTS[$((V_SELECTION-1))]}"
-        fi
-    else
-        SELECTED_VARIANT=$(ls -1 "$TUI_VARIANTS_DIR" | fzf --prompt="Select TUI variant: " --height=10 --reverse --border --header="Choose a TUI color variant")
-        [ -n "$SELECTED_VARIANT" ] && THEME_NAME="tui/$SELECTED_VARIANT"
-    fi
-fi
-
+# Variant Select
 if [ "$THEME_NAME" == "terraria" ]; then
     info "Customizing Terraria sub-theme..."
     echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Time-based (Transitions with day/night)"
@@ -176,34 +132,53 @@ if [ "$THEME_NAME" == "Genshin" ]; then
 fi
 
 if [ "$THEME_NAME" == "clockwork" ]; then
-    info "Customizing Clockwork Theme"
-    
-    # Theme Mode
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Dark Mode (Default)"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Light Mode"
-    echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1/2]: ${C_RESET}"
-    read -rp "" MODE_S
-    
-    if [ "$MODE_S" == "2" ]; then
-        sed -i "s/^themeMode=.*/themeMode=light/" "$THEMES_DIR/$THEME_NAME/theme.conf"
+    info "Clockwork — Select a clock variant..."
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Orbital"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Tape"
+    echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1-2]: ${C_RESET}"
+    read -rp "" CW_VARIANT
+
+    case $CW_VARIANT in
+        1) CW_SUBDIR="orbital"   ;;
+        2) CW_SUBDIR="tape"      ;;
+        *) CW_SUBDIR="orbital"; substep "Invalid choice, defaulting to Orbital." ;;
+    esac
+
+    success "Selected variant: ${C_ACCENT}$CW_SUBDIR${C_RESET}"
+    THEME_NAME="clockwork/$CW_SUBDIR"
+
+    # Orbital Custom
+    if [ "$CW_SUBDIR" == "orbital" ]; then
+        info "Customizing Clockwork / $CW_SUBDIR..."
+        echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Dark Mode (Default)"
+        echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Light Mode"
+        echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1/2]: ${C_RESET}"
+        read -rp "" MODE_S
+
+        if [ "$MODE_S" == "2" ]; then
+            sed -i "s/^themeMode=.*/themeMode=light/" "$THEMES_DIR/$THEME_NAME/theme.conf"
+        else
+            sed -i "s/^themeMode=.*/themeMode=dark/" "$THEMES_DIR/$THEME_NAME/theme.conf"
+        fi
+
+        echo -ne "${C_MAIN}${C_BOLD} │  ${C_YELLOW}Enable windup animation? (y/n): ${C_RESET}"
+        read -rp "" WIND_S
+        if [[ "$WIND_S" =~ ^[Nn]$ ]]; then
+            sed -i "s/^enableWindup=.*/enableWindup=false/" "$THEMES_DIR/$THEME_NAME/theme.conf"
+        else
+            sed -i "s/^enableWindup=.*/enableWindup=true/" "$THEMES_DIR/$THEME_NAME/theme.conf"
+        fi
     else
+        # Sync Defaults
         sed -i "s/^themeMode=.*/themeMode=dark/" "$THEMES_DIR/$THEME_NAME/theme.conf"
-    fi
-    
-    # Windup Animation
-    echo -ne "${C_MAIN}${C_BOLD} │  ${C_YELLOW}Enable windup animation? (y/n): ${C_RESET}"
-    read -rp "" WIND_S
-    if [[ "$WIND_S" =~ ^[Nn]$ ]]; then
-        sed -i "s/^enableWindup=.*/enableWindup=false/" "$THEMES_DIR/$THEME_NAME/theme.conf"
-    else
         sed -i "s/^enableWindup=.*/enableWindup=true/" "$THEMES_DIR/$THEME_NAME/theme.conf"
     fi
 fi
 
 if [ "$THEME_NAME" == "osu" ]; then
     info "Customizing Osu! theme..."
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Main menu only  (direct password login)"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Main menu + rhythm game gate  (default)"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Main menu only"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Main menu + rhythm game gate"
     echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1/2]: ${C_RESET}"
     read -rp "" OSU_OPT
     if [ "$OSU_OPT" == "1" ]; then
@@ -213,7 +188,7 @@ if [ "$THEME_NAME" == "osu" ]; then
     fi
 fi
 
-# Check for fonts in the selected theme
+# Font Check
 FONT_COUNT=$(ls -1 "$THEMES_DIR/$THEME_NAME/font" 2>/dev/null | grep -E "\.(ttf|otf)$" | wc -l)
 if [ "$FONT_COUNT" -eq 0 ]; then
     echo -e "${C_YELLOW}${C_BOLD} ╭─   MISSING FONT DETECTED${C_RESET}"
@@ -223,7 +198,7 @@ if [ "$FONT_COUNT" -eq 0 ]; then
     echo -e "${C_YELLOW}${C_BOLD} ╰─ ${C_DIM}Refer to README.md for font suggestions.${C_RESET}\n"
 fi
 
-# Save theme choice
+# Save Choice
 mkdir -p "$HOME/.config/qylock"
 echo "$THEME_NAME" > "$HOME/.config/qylock/theme"
 substep "Configuration saved to ~/.config/qylock/theme"
@@ -231,6 +206,7 @@ substep "Configuration saved to ~/.config/qylock/theme"
 sed -i "s|export QS_THEME=.*$|export QS_THEME=\"\${1:-$THEME_NAME}\"|" "$TARGET_DIR/lock.sh"
 success "Theme '$THEME_NAME' set as lockscreen default!"
 
+# Shortcuts Info
 info "Keyboard Shortcut Instructions"
 substep "To use this lockscreen natively, bind a shortcut (e.g., Mod + L) in your Window Manager's configuration."
 substep "Set the shortcut to execute: ${C_YELLOW}$TARGET_DIR/lock.sh${C_RESET}"

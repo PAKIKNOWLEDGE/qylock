@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 
-# Capture the exact directory where this script is located
+# Script Dir
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 THEMES_DIR="$SCRIPT_DIR/themes"
 SYSTEM_THEMES_DIR="/usr/share/sddm/themes"
 SDDM_CONF_DIR="/etc/sddm.conf.d"
 SDDM_CONF="$SDDM_CONF_DIR/theme.conf"
 
-# Reset terminal colors on exit or crash
+# Reset Colors
 trap 'echo -ne "\033[0m"' EXIT
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Theme Palette
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Palette
 C_MAIN='\033[38;2;202;169;224m'
 C_ACCENT='\033[38;2;145;177;240m'
 C_DIM='\033[38;2;129;122;150m'
@@ -48,13 +45,10 @@ error() {
     echo -e "${C_MAIN}${C_BOLD} ╰─ ${C_RED}✘ ${C_RESET}$1\n"
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Core Logic
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Core Logic
 header
 
-# Dependency check
+# Deps Check
 info "Checking dependencies..."
 
 if ! command -v sddm &> /dev/null; then
@@ -69,7 +63,7 @@ fi
 
 success "Dependencies verified"
 
-# Version selection
+# Version Selection
 info "Select SDDM Backend Version"
 substep "Modern SDDM versions run on Qt6, but some stable distros still use Qt5."
 substep "If you encounter 'import' errors, re-run this script and select Qt5."
@@ -92,7 +86,7 @@ else
     substep "Using native Qt6 themes"
 fi
 
-# Check if themes directory exists
+# Themes Check
 if [ ! -d "$THEMES_DIR" ]; then
     error "Themes directory not found at $THEMES_DIR"
     exit 1
@@ -116,11 +110,10 @@ if ! command -v fzf &> /dev/null; then
         exit 1
     fi
 else
-    # List themes and let user select one using fzf
     SELECTED_THEME=$(ls -1 "$THEMES_DIR" | fzf --prompt="Select theme: " --height=15 --reverse --border --header="Use arrow keys/Enter to select")
 fi
 
-# Sub-selection for Terraria theme
+# Terraria Sub
 if [ "$SELECTED_THEME" == "terraria" ]; then
     info "Customizing Terraria sub-theme..."
     substep "Select mode:"
@@ -164,7 +157,7 @@ if [ "$SELECTED_THEME" == "terraria" ]; then
     esac
 fi
 
-# Sub-selection for Genshin theme
+# Genshin Sub
 if [ "$SELECTED_THEME" == "Genshin" ]; then
     info "Customizing Genshin Impact sub-theme..."
     substep "Select background mode:"
@@ -177,7 +170,7 @@ if [ "$SELECTED_THEME" == "Genshin" ]; then
     case $SUB_OPT in
         1)
             sed -i "s/^background_mode=.*/background_mode=time/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
-            substep "Time-based mode activated! (dawn → day → dusk → night)"
+            substep "Time-based mode activated!"
             ;;
         2)
             sed -i "s/^background_mode=.*/background_mode=random/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
@@ -207,35 +200,54 @@ if [ "$SELECTED_THEME" == "Genshin" ]; then
     esac
 fi
 
-# Clockwork Theme
+# Clockwork Sub
 if [ "$SELECTED_THEME" == "clockwork" ]; then
-    info "Customizing Clockwork sub-theme..."
-    
-    # Theme Mode
-    substep "Select theme mode:"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Dark Mode (Default)"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Light Mode"
-    echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
-    read -rp "" MODE_S
-    
-    if [ "$MODE_S" == "2" ]; then
-        sed -i "s/^themeMode=.*/themeMode=light/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
-        substep "Light mode activated!"
+    info "Clockwork — Select a clock variant..."
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Orbital"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Tape"
+    echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1-2]: ${C_RESET}"
+    read -rp "" CW_VARIANT
+
+    case $CW_VARIANT in
+        1) CW_SUBDIR="orbital"   ;;
+        2) CW_SUBDIR="tape"      ;;
+        *) CW_SUBDIR="orbital"; substep "Invalid choice, defaulting to Orbital." ;;
+    esac
+
+    success "Selected variant: ${C_ACCENT}$CW_SUBDIR${C_RESET}"
+    SELECTED_THEME="clockwork/$CW_SUBDIR"
+
+    # Orbital Custom
+    if [ "$CW_SUBDIR" == "orbital" ]; then
+        info "Customizing Clockwork / $CW_SUBDIR..."
+        substep "Select theme mode:"
+        echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Dark Mode (Default)"
+        echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Light Mode"
+        echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
+        read -rp "" MODE_S
+
+        if [ "$MODE_S" == "2" ]; then
+            sed -i "s/^themeMode=.*/themeMode=light/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
+            substep "Light mode activated!"
+        else
+            sed -i "s/^themeMode=.*/themeMode=dark/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
+            substep "Dark mode activated!"
+        fi
+
+        substep "Enable windup animation on login? (y/n):"
+        echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
+        read -rp "" WIND_S
+        if [[ "$WIND_S" =~ ^[Nn]$ ]]; then
+            sed -i "s/^enableWindup=.*/enableWindup=false/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
+            substep "Windup animation disabled."
+        else
+            sed -i "s/^enableWindup=.*/enableWindup=true/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
+            substep "Windup animation enabled."
+        fi
     else
+        # Sync Defaults
         sed -i "s/^themeMode=.*/themeMode=dark/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
-        substep "Dark mode activated!"
-    fi
-    
-    # Windup Animation
-    substep "Enable windup animation? (y/n):"
-    echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice: ${C_RESET}"
-    read -rp "" WIND_S
-    if [[ "$WIND_S" =~ ^[Nn]$ ]]; then
-        sed -i "s/^enableWindup=.*/enableWindup=false/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
-        substep "Windup animation disabled."
-    else
         sed -i "s/^enableWindup=.*/enableWindup=true/" "$THEMES_DIR/$SELECTED_THEME/theme.conf"
-        substep "Windup animation enabled."
     fi
 fi
 
@@ -243,8 +255,8 @@ fi
 if [ "$SELECTED_THEME" == "osu" ]; then
     info "Customizing Osu! theme..."
     substep "Select login mode:"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Main menu only  (direct password login)"
-    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Main menu + rhythm game gate  (default)"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}1 ${C_DIM}❯ ${C_RESET}Main menu only"
+    echo -e "${C_MAIN}${C_BOLD} │  ${C_ACCENT}2 ${C_DIM}❯ ${C_RESET}Main menu + rhythm game gate"
     echo -ne "${C_MAIN}${C_BOLD} ╰─ ${C_YELLOW}Choice [1/2]: ${C_RESET}"
     read -rp "" OSU_OPT
     if [ "$OSU_OPT" == "1" ]; then
@@ -263,7 +275,7 @@ fi
 
 substep "Selected: ${C_ACCENT}${SELECTED_THEME}${C_RESET}"
 
-# Check for fonts in the selected theme
+# Font Check
 FONT_COUNT=$(ls -1 "$THEMES_DIR/$SELECTED_THEME/font" 2>/dev/null | grep -E "\.(ttf|otf)$" | wc -l)
 if [ "$FONT_COUNT" -eq 0 ]; then
     echo -e "${C_YELLOW}${C_BOLD} ╭─   MISSING FONT DETECTED${C_RESET}"
@@ -273,20 +285,20 @@ if [ "$FONT_COUNT" -eq 0 ]; then
     echo -e "${C_YELLOW}${C_BOLD} ╰─ ${C_DIM}Refer to README.md for font suggestions.${C_RESET}\n"
 fi
 
-# Installation Logic
+# Install Logic
 info "Applying configuration changes..."
 
-# Create system themes directory if it doesn't exist
+# Dir Init
 if [ ! -d "$SYSTEM_THEMES_DIR" ]; then
     substep "Creating system directory..."
     sudo mkdir -p "$SYSTEM_THEMES_DIR"
 fi
 
-# Copy theme to system directory
+# Copy Theme
 substep "Copying theme to /usr/share/sddm/themes/..."
 sudo cp -r "$THEMES_DIR/$SELECTED_THEME" "$SYSTEM_THEMES_DIR/"
 
-# Update SDDM configuration
+# Update SDDM
 substep "Updating sddm settings..."
 if [ ! -d "$SDDM_CONF_DIR" ]; then
     sudo mkdir -p "$SDDM_CONF_DIR"
@@ -295,7 +307,7 @@ fi
 if [ ! -f "$SDDM_CONF" ]; then
     echo -e "[Theme]\nCurrent=$SELECTED_THEME" | sudo tee "$SDDM_CONF" > /dev/null
 else
-    # Update existing 'Current=' line or add it under [Theme]
+    # Set Current
     if grep -q "^Current=" "$SDDM_CONF"; then
         sudo sed -i "s/^Current=.*/Current=$SELECTED_THEME/" "$SDDM_CONF"
     else
