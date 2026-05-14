@@ -23,6 +23,7 @@ Rectangle {
     property bool sessionMenuOpen: false
     property bool userMenuOpen: false
     property bool useImage: false  // true=图片背景 image background | false=视频背景 video background
+    onUseImageChanged: { if (useImage) player.pause(); else player.play() }
 
     FolderListModel {
         id: fontFolder
@@ -91,7 +92,7 @@ Rectangle {
         source: "output.mp4"
         videoOutput: bgVideo
         loops: MediaPlayer.Infinite
-        playing: !root.useImage   // bind to toggle: auto-play / auto-pause
+        Component.onCompleted: { if (!root.useImage) player.play() }
     }
     
     // Video render surface — hidden when image mode is on
