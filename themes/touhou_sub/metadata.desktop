@@ -1,0 +1,8 @@
+[SddmGreeterTheme]
+Name=Touhou-project_in_subway_station
+Description=touhou x subway sddm-theme
+Author=8777
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+QtVersion=6
